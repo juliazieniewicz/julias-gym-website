@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Strength OS v15 | Mobile Fixes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { 
+                        indigo: '#313b72', 
+                        teal: '#087e8b', 
+                        ice: '#c9f6f7', 
+                        green: '#d3fac7', 
+                        pink: '#ffb7c3',
+                        surface: '#ffffff',
+                    },
+                    boxShadow: { 'neon': '0 4px 20px -2px rgba(8, 126, 139, 0.15)' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #F8FAFC; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #313b72; border-radius: 10px; }
+        
+        .glass-panel { background: white; border: 1px solid #c9f6f7; box-shadow: 0 10px 30px -10px rgba(49, 59, 114, 0.05); }
+        .exercise-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-left: 4px solid transparent; }
+        .exercise-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(49, 59, 114, 0.1); }
+
+        select { -webkit-appearance: none; -moz-appearance: none; text-indent: 1px; text-overflow: ''; }
+        body.home-mode .gym-view { display: none !important; }
+        body.home-mode .home-view { display: block !important; }
+        body:not(.home-mode) .home-view { display: none !important; }
+        
+        /* Timer: Hidden on mobile */
+        .timer-float { display: none; position: fixed; bottom: 100px; right: 20px; z-index: 50; transition: all 0.3s ease; }
+        @media (min-width: 768px) { 
+            .timer-float { display: flex; } 
+        }
+        
+        .modal { transition: opacity 0.2s ease; }
+        body.modal-active { overflow: hidden; }
+        .pb-glow { animation: pulse-pink 1.5s infinite; border-color: #ffb7c3 !important; }
+        @keyframes pulse-pink {
+            0% { box-shadow: 0 0 0 0 rgba(255, 183, 195, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 183, 195, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 183, 195, 0); }
+        }
+    </style>
+</head>
+
+<body class="text-indigo antialiased h-screen flex flex-col md:flex-row overflow-hidden selection:bg-ice">
+
+    <aside class="w-64 bg-indigo text-white hidden md:flex flex-col z-20 shadow-2xl relative overflow-hidden pb-24">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-teal rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div class="p-8 relative z-10">
+            <h1 class="text-3xl font-black tracking-tighter leading-none">STRENGTH<br><span class="text-ice">.OS</span></h1>
+            <p class="text-[10px] text-pink font-bold tracking-widest mt-2 uppercase">v15.0 Mobile Fix</p>
+        </div>
+        <nav class="flex-1 px-4 space-y-3 overflow-y-auto z-10">
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-all active-nav" data-target="day1">
+                <i class="fa-solid fa-dumbbell w-6 text-center text-rose-400"></i><span>Quads & Glutes</span>
+            </button>
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-all" data-target="day2">
+                <i class="fa-solid fa-person-running w-6 text-center text-amber-400"></i><span>Hams & Glutes</span>
+            </button>
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-all" data-target="day3">
+                <i class="fa-solid fa-hand-fist w-6 text-center text-sky-400"></i><span>Push (CST)</span>
+            </button>
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-all" data-target="day4">
+                <i class="fa-solid fa-arrow-up-right-dots w-6 text-center text-violet-400"></i><span>Pull (BB)</span>
+            </button>
+            <div class="my-4 border-t border-white/10 mx-4"></div>
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-pink transition-all" data-target="targets">
+                <i class="fa-solid fa-bullseye w-6 text-center text-pink"></i><span>Goals & PBs</span>
+            </button>
+            <button class="nav-item w-full flex items-center gap-4 p-3 rounded-xl text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-ice transition-all" data-target="analytics">
+                <i class="fa-solid fa-chart-pie w-6 text-center text-ice"></i><span>Analytics</span>
+            </button>
+        </nav>
+        <div class="p-6 bg-white/5 backdrop-blur-md">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold uppercase tracking-widest text-ice">Home Mode</span>
+                <input type="checkbox" class="accent-teal w-4 h-4 cursor-pointer home-mode-toggle">
+            </div>
+            <p class="text-[10px] text-white/40 leading-tight">Switch to 20kg kit.</p>
+        </div>
+    </aside>
+
+    <nav class="md:hidden fixed bottom-[50px] left-0 w-full bg-white border-t border-ice z-40 grid grid-cols-6 gap-1 py-3 px-1 pb-safe shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-rose-500" data-target="day1"><i class="fa-solid fa-dumbbell text-lg"></i><span class="text-[8px] font-black uppercase">Legs A</span></button>
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-indigo/40" data-target="day2"><i class="fa-solid fa-person-running text-lg"></i><span class="text-[8px] font-black uppercase">Legs B</span></button>
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-indigo/40" data-target="day3"><i class="fa-solid fa-hand-fist text-lg"></i><span class="text-[8px] font-black uppercase">Push</span></button>
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-indigo/40" data-target="day4"><i class="fa-solid fa-arrow-up-right-dots text-lg"></i><span class="text-[8px] font-black uppercase">Pull</span></button>
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-indigo/40" data-target="targets"><i class="fa-solid fa-bullseye text-lg text-pink"></i><span class="text-[8px] font-black uppercase text-pink">Goals</span></button>
+        <button class="nav-item-mobile flex flex-col items-center justify-center gap-1 text-indigo/40" data-target="analytics"><i class="fa-solid fa-chart-pie text-lg text-ice"></i><span class="text-[8px] font-black uppercase text-ice">Stats</span></button>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto relative h-full scroll-smooth bg-[#F8FAFC]">
+        
+        <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-ice px-6 py-4 shadow-sm">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-[10px] font-black text-indigo/40 uppercase tracking-[0.2em] mb-1">Active Session</h2>
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-2xl font-black text-indigo tracking-tight" id="activeTitle">Quads & Glutes</h3>
+                            <span class="home-badge hidden px-2 py-1 rounded text-[9px] font-black bg-ice text-teal uppercase tracking-wide border border-teal/20">🏠 Home</span>
+                        </div>
+                    </div>
+                    
+                    <div class="md:hidden flex items-center gap-3">
+                        <label class="flex items-center gap-2 bg-indigo/5 px-2 py-1.5 rounded-lg border border-indigo/10">
+                            <span class="text-[9px] font-bold text-indigo/60 uppercase">Home</span>
+                            <input type="checkbox" class="accent-teal w-4 h-4 cursor-pointer home-mode-toggle">
+                        </label>
+                        <button onclick="resetSession()" class="w-8 h-8 flex items-center justify-center rounded-full bg-ice/50 text-indigo hover:text-teal transition-colors" title="Reset Session">
+                            <i class="fa-solid fa-rotate-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/3 flex items-end gap-3">
+                    <div class="flex-1">
+                        <div class="flex justify-between text-[10px] font-bold text-indigo/40 mb-1"><span>Progress</span><span id="progress-text">0%</span></div>
+                        <div class="h-2 w-full bg-ice rounded-full overflow-hidden">
+                            <div id="progress-bar" class="h-full bg-teal w-0 transition-all duration-700 ease-out shadow-[0_0_10px_rgba(8,126,139,0.5)]"></div>
+                        </div>
+                    </div>
+                    <button onclick="resetSession()" class="hidden md:block mb-[-2px] text-indigo/30 hover:text-teal transition-colors" title="Reset Session"><i class="fa-solid fa-rotate-right text-sm"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-4 pb-40 md:p-10 md:pb-32 max-w-6xl mx-auto space-y-6" id="content-area">
+            
+            <div class="timer-float hidden md:flex bg-indigo text-white p-2 pl-4 pr-2 rounded-full shadow-neon items-center gap-4 border border-white/10">
+                <div class="font-mono text-xl font-bold tracking-widest text-ice" id="timer-display">00:00</div>
+                <div class="flex gap-1">
+                    <button id="timer-toggle" class="w-9 h-9 rounded-full bg-teal text-white flex items-center justify-center hover:bg-white hover:text-teal transition-all"><i class="fa-solid fa-play text-xs ml-0.5"></i></button>
+                    <button id="timer-reset" class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all"><i class="fa-solid fa-rotate-left text-xs"></i></button>
+                </div>
+            </div>
+
+            <div id="day1" class="workout-view space-y-6"></div>
+            <div id="day2" class="workout-view hidden space-y-6"></div>
+            <div id="day3" class="workout-view hidden space-y-6"></div>
+            <div id="day4" class="workout-view hidden space-y-6"></div>
+
+            <section id="targets" class="workout-view hidden space-y-8">
+                <div id="goals-container"></div>
+            </section>
+
+            <section id="analytics" class="workout-view hidden space-y-8">
+                <div class="glass-panel p-8 rounded-3xl bg-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-ice rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 relative z-10">
+                        <div>
+                            <h4 class="text-xs font-black uppercase text-teal tracking-widest mb-1">Data Sync</h4>
+                            <h2 class="text-2xl font-bold text-indigo">Manage Your Data</h2>
+                        </div>
+                        <div class="flex gap-3 mt-4 md:mt-0">
+                            <input type="file" id="importFile" class="hidden" onchange="importData(this)">
+                            <button onclick="document.getElementById('importFile').click()" class="bg-indigo text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-teal transition shadow-lg flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up"></i> Import</button>
+                            <button onclick="exportData()" class="bg-white border border-indigo/10 text-indigo px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-ice transition shadow-sm flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down"></i> Backup</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-indigo/50 max-w-xl mb-4">Use <strong>Backup</strong> to save your progress. Send the file to another device and use <strong>Import</strong> to sync.</p>
+                    <div class="border-t border-gray-100 pt-4 mt-4">
+                        <button onclick="wipeAllData()" class="text-red-500 text-xs font-bold hover:text-red-700 flex items-center gap-2 transition-colors"><i class="fa-solid fa-trash"></i> Delete All Data (Reset App)</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-3xl bg-white">
+                        <h4 class="text-xs font-black uppercase text-indigo/30 mb-6 tracking-widest">Consistency (Logs by Day)</h4>
+                        <div class="h-64"><canvas id="distributionChart"></canvas></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-3xl bg-white">
+                        <h4 class="text-xs font-black uppercase text-indigo/30 mb-6 tracking-widest">Volume Split (Last 7 Days)</h4>
+                        <div class="h-64"><canvas id="volumeChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="pb-toast" class="fixed top-24 right-4 bg-teal text-white p-4 rounded-2xl shadow-neon transform translate-x-full transition-transform duration-300 z-50 flex items-center gap-4 border border-ice/20">
+        <div class="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-trophy text-pink"></i></div>
+        <div>
+            <div class="font-black text-xs uppercase text-ice tracking-wider">New Personal Best!</div>
+            <div class="text-sm font-bold mt-0.5" id="pb-toast-msg"></div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal opacity-0 pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-indigo/60 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl z-10 overflow-hidden flex flex-col max-h-[70vh] border border-ice">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-indigo text-lg" id="modalTitle">History</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-400 hover:bg-pink hover:text-white transition-colors flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="modalContent" class="p-5 overflow-y-auto space-y-3 bg-white flex-1"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG: COLOR THEMES ---
+        const themes = {
+            day1: { primary: 'text-rose-500', bg: 'bg-rose-500', border: 'hover:border-rose-500', light: 'bg-rose-50', icon: 'text-rose-500', 
+                    checkbox: 'peer-checked:bg-rose-500 peer-checked:border-rose-500 group-hover:border-rose-500' },
+            day2: { primary: 'text-amber-500', bg: 'bg-amber-500', border: 'hover:border-amber-500', light: 'bg-amber-50', icon: 'text-amber-500', 
+                    checkbox: 'peer-checked:bg-amber-500 peer-checked:border-amber-500 group-hover:border-amber-500' },
+            day3: { primary: 'text-sky-500', bg: 'bg-sky-500', border: 'hover:border-sky-500', light: 'bg-sky-50', icon: 'text-sky-500', 
+                    checkbox: 'peer-checked:bg-sky-500 peer-checked:border-sky-500 group-hover:border-sky-500' },
+            day4: { primary: 'text-violet-500', bg: 'bg-violet-500', border: 'hover:border-violet-500', light: 'bg-violet-50', icon: 'text-violet-500', 
+                    checkbox: 'peer-checked:bg-violet-500 peer-checked:border-violet-500 group-hover:border-violet-500' }
+        };
+
+        const workoutData = {
+            day1: [
+                { id: "d1-ex1", muscle: "Quads", name: "Leg Press", homeName: "Weighted Step-Ups", gymLoad: "60-70kg", homeLoad: "8kg", reps: "3 x 10-15", gymNote: "Push through heels. Back flat.", homeNote: "Use stand. Carry DBs/KB." },
+                { id: "d1-ex2", muscle: "Quads", name: "Smith Machine/Goblet Squats", homeName: "Heels-Elevated Goblet", gymLoad: "30kg BB / 20kg DB", homeLoad: "18kg KB", reps: "3 x 8-12", gymNote: "Plate under heels. Upright chest.", homeNote: "Max depth. Upright chest." },
+                { id: "d1-ex3", muscle: "Quads", name: "Bulgarian Split Squat", homeName: "Bulgarian Split Squat", gymLoad: "2 x 8kg", homeLoad: "2 x 8kg", reps: "3 x 8-12", gymNote: "Front heel drive. Deep hip hinge.", homeNote: "Use stand for back foot." },
+                { id: "d1-ex4", muscle: "Quads", name: "Leg Extensions", homeName: "Wall Sits", gymLoad: "25-30kg", homeLoad: "BW", reps: "3 x 45-60s", gymNote: "Hard squeeze at top.", homeNote: "90 degree knee angle." },
+                { id: "d1-ex5", muscle: "Glutes", name: "Hip Thrust / Bridge", homeName: "Hip Thrust", gymLoad: "40kg BB / 24kg DB", homeLoad: "20kg Load", reps: "3 x 10-15", gymNote: "Last rep: 10s hold.", homeNote: "Squeeze glutes hard." },
+                { id: "d1-ex6", muscle: "Glutes", name: "Adductor Machine", homeName: "Cossack Squats", gymLoad: "40kg", homeLoad: "BW", reps: "3 x 15-20", gymNote: "Overall shape focus.", homeNote: "Deep side lunges on mat." }
+            ],
+            day2: [
+                { id: "d2-ex1", muscle: "Hamstrings", name: "Cable RDLs", homeName: "Barbell RDLs", gymLoad: "45kg", homeLoad: "30kg", reps: "3 x 10-15", gymNote: "Lean back into cable for balance. Constant tension.", homeNote: "Flat back focus." },
+                { id: "d2-ex2", muscle: "Quads", name: "Sumo Squats", homeName: "Sumo Squats", gymLoad: "32kg KB", homeLoad: "20kg KB", reps: "3 x 10-15", gymNote: "Pulse at bottom. Wide stance, toes slightly out.", homeNote: "Pulse at bottom. Wide stance." },
+                { id: "d2-ex3", muscle: "Glutes", name: "45° Hip Extensions", homeName: "BB Good Mornings", gymLoad: "20kg", homeLoad: "15kg", reps: "3 x 10-12", gymNote: "Glute squeeze focus. Chin tucked.", homeNote: "Hinge back deeply." },
+                { id: "d2-ex4", muscle: "Hamstrings", name: "Hamstring Curls", homeName: "Lying DB Curls", gymLoad: "45kg", homeLoad: "10kg", reps: "3 x 12-18", gymNote: "Slow controlled.", homeNote: "Squeeze DB with feet." },
+                { id: "d2-ex5", muscle: "Glutes", name: "Hip Abductions", homeName: "Side Lying Raises", gymLoad: "60kg", homeLoad: "5kg", reps: "3 x 15-20", gymNote: "Lean forward.", homeNote: "High reps." },
+                { id: "d2-ex6", muscle: "Glutes", name: "Cable Kickbacks / Hamstring Slides", homeName: "Hamstring Slides", gymLoad: "12.5kg / BW", homeLoad: "BW", reps: "3 x 10-15", gymNote: "Squeeze at top.", homeNote: "Focus on 3s slow lowering." }
+            ],
+            day3: [
+                { id: "d3-ex1", muscle: "Chest", name: "Incline DB Press", homeName: "Floor DB Press", gymLoad: "2 x 10kg", homeLoad: "2 x 10kg", reps: "3 x 8-12", gymNote: "35-45° bench.", homeNote: "Squeeze chest at top." },
+                { id: "d3-ex2", muscle: "Chest", name: "DB Flyes", homeName: "DB Flyes", gymLoad: "2 x 6kg", homeLoad: "2 x 6kg", reps: "3 x 12-18", gymNote: "Control stretch.", homeNote: "Slow reps." },
+                { id: "d3-ex3", muscle: "Chest", name: "Push Ups", homeName: "Push Ups", gymLoad: "BW", homeLoad: "BW", reps: "3 x AMRAP", gymNote: "Straight line body.", homeNote: "Straight line body." },
+                { id: "d3-ex4", muscle: "Shoulders", name: "DB Shoulder Press", homeName: "DB Shoulder Press", gymLoad: "2 x 8kg", homeLoad: "2 x 8kg", reps: "3 x 8-12", gymNote: "Core tight. Standing or seated.", homeNote: "Standing." },
+                { id: "d3-ex5", muscle: "Shoulders", name: "Lateral Raises", homeName: "Lateral Raises", gymLoad: "5kg", homeLoad: "5kg", reps: "3 x 15-20", gymNote: "Lead with elbows.", homeNote: "Lead with elbows." },
+                { id: "d3-ex6", muscle: "Triceps", name: "Cable Tricep Pushdowns", homeName: "Tricep Kickbacks", gymLoad: "10kg", homeLoad: "5kg", reps: "3 x 10-15", gymNote: "V-bar or straight bar. Focus on squeeze", homeNote: "Elbows tucked." },
+                { id: "d3-ex7", muscle: "Triceps", name: "Cable Overhead Tricep Extensions", homeName: "DB Overhead Tricep Extensions", gymLoad: "10kg", homeLoad: "10kg", reps: "2 x 12-18", gymNote: "Rope cable.", homeNote: "Hold 1 DB both hands." }
+            ],
+            day4: [
+                { id: "d4-ex1", muscle: "Back", name: "Lat Pull Down", homeName: "DB Pullovers", gymLoad: "35kg", homeLoad: "15kg", reps: "3 x 8-12", gymNote: "Pull to chest. Thumb over grip.", homeNote: "Straight arm arc." },
+                { id: "d4-ex2", muscle: "Back", name: "Assisted Pull Ups", homeName: "Inverted Rows", gymLoad: "-21kg", homeLoad: "BW", reps: "3 x 6-8", gymNote: "Reduce assist.", homeNote: "Row body up from floor." },
+                { id: "d4-ex3", muscle: "Back", name: "Chest Supported Incline DB Row", homeName: "Single-Arm Dumbbell Row", gymLoad: "12kg", homeLoad: "12kg", reps: "3 x 10-15", gymNote: "Chest supported.", homeNote: "Maintain flat back." },
+                { id: "d4-ex4", muscle: "Back", name: "T-Bar Row / Single-Arm Dumbbell Row", homeName: "Bent Over Row", gymLoad: "14kg / 14kg", homeLoad: "20kg", reps: "3 x 8-10", gymNote: "Hinge hips.", homeNote: "Flat back." },
+                { id: "d4-ex5", muscle: "Shoulders", name: "Cable Face Pulls", homeName: "Rear Delt Flys", gymLoad: "15kg", homeLoad: "7kg", reps: "3 x 12-18", gymNote: "Pull towards forehead.", homeNote: "Hinge at hips." },
+                { id: "d4-ex6", muscle: "Biceps", name: "Alt Bicep Curls", homeName: "Alt Bicep Curls", gymLoad: "7kg", homeLoad: "7kg", reps: "3 x 8-10", gymNote: "Strict form. Elbows glued.", homeNote: "Strict form." },
+                { id: "d4-ex7", muscle: "Biceps", name: "Hammer Curls", homeName: "Hammer Curls", gymLoad: "8kg", homeLoad: "8kg", reps: "3 x 8-10", gymNote: "Palms inwards.", homeNote: "Palms inwards." }
+            ]
+        };
+
+        function getVariants(ex) {
+            const names = ex.name.split(/\s*\/\s*/); 
+            let loads = ex.gymLoad.split(/\s*\/\s*/);
+            return names.map((n, i) => {
+                const rawLoad = loads[i] || loads[0]; 
+                return { index: i, name: n.trim(), rawLoad: rawLoad.trim(), baseline: extractMaxWeight(rawLoad) };
+            });
+        }
+
+        function extractMaxWeight(str) {
+            const regex = /(\d+(?:\.\d+)?)\s*kg/gi;
+            let max = 0; let match;
+            while ((match = regex.exec(str)) !== null) { const num = parseFloat(match[1]); if (num > max) max = num; }
+            return max;
+        }
+
+        function updateLoadDisplay(id, variantIndex) {
+            let exercise;
+            Object.values(workoutData).forEach(day => { const found = day.find(e => e.id === id); if (found) exercise = found; });
+            if (!exercise) return;
+            const variants = getVariants(exercise);
+            const selected = variants[variantIndex];
+            
+            const displayEl = document.getElementById(`load-display-${id}`);
+            if (displayEl) displayEl.textContent = selected.rawLoad;
+
+            const pbKey = `sb_pb_${id}_${variantIndex}`;
+            const currentPB = parseFloat(localStorage.getItem(pbKey));
+            const pbEl = document.getElementById(`pb-badge-${id}`);
+            if(pbEl) {
+                if(currentPB) {
+                    pbEl.innerHTML = `<i class="fa-solid fa-trophy text-pink text-[10px] mr-1"></i> ${currentPB}kg`;
+                    pbEl.classList.remove('opacity-0');
+                } else {
+                    pbEl.classList.add('opacity-0');
+                }
+            }
+        }
+
+        function renderWorkouts() {
+            Object.keys(workoutData).forEach(dayKey => {
+                const container = document.getElementById(dayKey);
+                container.innerHTML = '';
+                
+                const theme = themes[dayKey] || { primary: 'text-indigo', bg: 'bg-indigo', border: 'hover:border-teal', light: 'bg-gray-50', icon: 'text-teal', checkbox: 'peer-checked:bg-teal peer-checked:border-teal' };
+
+                workoutData[dayKey].forEach((ex, index) => {
+                    const variants = getVariants(ex);
+                    let titleHTML = '';
+                    const initialLoad = variants[0].rawLoad;
+                    const initialPB = parseFloat(localStorage.getItem(`sb_pb_${ex.id}_0`));
+
+                    if(variants.length > 1) {
+                        titleHTML = `
+                            <div class="relative inline-block group/select">
+                                <select id="select-${ex.id}" onchange="updateLoadDisplay('${ex.id}', this.value)" class="appearance-none bg-transparent font-bold text-lg text-indigo pr-6 cursor-pointer focus:outline-none focus:${theme.primary} transition-colors">
+                                    ${variants.map(v => `<option value="${v.index}">${v.name}</option>`).join('')}
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-indigo/30 group-hover/select:${theme.primary} transition-colors">
+                                    <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        titleHTML = `<span class="font-bold text-indigo text-lg">${ex.name}</span>`;
+                    }
+
+                    const pbVisibleClass = initialPB ? '' : 'opacity-0';
+                    const pbText = initialPB ? `<i class="fa-solid fa-trophy text-pink text-[10px] mr-1"></i> ${initialPB}kg` : '';
+
+                    const html = `
+                        <div class="exercise-card bg-white rounded-2xl p-5 border border-ice relative group ${theme.border}">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <div class="gym-view">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-mono font-bold text-indigo/30 text-lg">${index + 1}.</span>
+                                            ${titleHTML}
+                                        </div>
+                                        <div class="mt-1 flex items-center gap-2">
+                                            <span id="pb-badge-${ex.id}" class="text-[10px] bg-pink/10 text-indigo px-2 py-0.5 rounded-full font-bold transition-opacity ${pbVisibleClass}">${pbText}</span>
+                                            <div class="text-xs font-mono text-indigo/40">${ex.reps}</div>
+                                        </div>
+                                    </div>
+                                    <div class="home-view font-bold text-indigo text-lg hidden">${index + 1}. ${ex.homeName}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="gym-view text-2xl font-black ${theme.primary} font-mono tracking-tight" id="load-display-${ex.id}">${initialLoad}</div>
+                                    <div class="home-view text-xl font-black ${theme.primary} font-mono hidden">${ex.homeLoad}</div>
+                                    <button onclick="openHistory('${ex.id}', '${ex.name}')" class="text-indigo/30 hover:${theme.primary} transition-colors mt-1 text-xs font-bold uppercase tracking-wider flex items-center justify-end w-full gap-1"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+                                </div>
+                            </div>
+                            <div class="${theme.light} rounded-xl p-3 mb-4 text-xs text-indigo/70 leading-relaxed border border-gray-100">
+                                <span class="gym-view"><i class="fa-solid fa-circle-info ${theme.icon} mr-1 opacity-70"></i> ${ex.gymNote}</span>
+                                <span class="home-view hidden"><i class="fa-solid fa-house text-indigo mr-1 opacity-50"></i> ${ex.homeNote}</span>
+                            </div>
+                            <div class="flex gap-3 items-center">
+                                <div class="flex-1 relative group/input">
+                                    <input type="text" id="input-${ex.id}" class="w-full bg-white border border-ice rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-${theme.bg.split('-')[1]} focus:ring-1 focus:ring-${theme.bg.split('-')[1]} transition-colors text-indigo font-medium placeholder-indigo/20 shadow-sm" placeholder="Log: 60kg x 10...">
+                                </div>
+                                <button onclick="saveLog('${ex.id}', '${ex.name}', '${ex.muscle}', '${dayKey}')" class="${theme.bg} text-white w-12 h-11 rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-indigo/10"><i class="fa-solid fa-save"></i></button>
+                                
+                                <label class="custom-checkbox cursor-pointer relative">
+                                    <input type="checkbox" class="peer sr-only completion-check" data-id="${ex.id}" onchange="updateCardVisuals(this)">
+                                    <div class="w-11 h-11 bg-white rounded-xl border border-ice flex items-center justify-center transition-all ${theme.checkbox}">
+                                        <svg class="w-5 h-5 text-white hidden peer-checked:block pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += html;
+                });
+            });
+        }
+
+        // --- RENDER GOALS ---
+        function renderGoals() {
+            const container = document.getElementById('goals-container');
+            const categories = {
+                Quads: { title: "Quads", items: [] },
+                Glutes: { title: "Glutes", items: [] },
+                Hamstrings: { title: "Hamstrings", items: [] },
+                Chest: { title: "Chest", items: [] },
+                Back: { title: "Back", items: [] },
+                Shoulders: { title: "Shoulders", items: [] },
+                Triceps: { title: "Triceps", items: [] },
+                Biceps: { title: "Biceps", items: [] }
+            };
+
+            Object.keys(workoutData).forEach(dayKey => {
+                workoutData[dayKey].forEach(ex => {
+                    const variants = getVariants(ex);
+                    const catKey = ex.muscle; 
+                    variants.forEach(v => {
+                        const variantKey = `sb_pb_${ex.id}_${v.index}`;
+                        let currentPB = parseFloat(localStorage.getItem(variantKey));
+                        let baseline = v.baseline;
+                        if (baseline === 0 && !currentPB) return;
+                        if (!currentPB) currentPB = baseline;
+
+                        const target = Math.round(baseline * 1.3);
+                        const range = target - baseline;
+                        let rawPercent = 0;
+                        if(currentPB > baseline) rawPercent = ((currentPB - baseline) / range) * 100;
+                        const visualPercent = Math.min(100, Math.max(0, Math.round(rawPercent)));
+
+                        let barColor = 'bg-indigo/30';
+                        if (visualPercent > 33) barColor = 'bg-teal/60';
+                        if (visualPercent > 66) barColor = 'bg-teal';
+                        if (visualPercent >= 100) barColor = 'bg-green';
+
+                        if(categories[catKey]) {
+                            categories[catKey].items.push({ name: v.name, pb: currentPB, target: target, percent: visualPercent, color: barColor });
+                        }
+                    });
+                });
+            });
+
+            let html = `
+                <div class="glass-panel p-8 rounded-3xl bg-white mb-8 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-pink/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                    <h2 class="text-3xl font-black text-indigo mb-2 relative z-10">Goals & PBs</h2>
+                    <p class="text-sm text-indigo/60 relative z-10">Tracking progress from baseline to +30% strength.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            `;
+
+            Object.values(categories).forEach(cat => {
+                if(cat.items.length === 0) return;
+                html += `
+                    <div class="bg-white p-5 rounded-3xl border border-ice shadow-sm flex flex-col h-full hover:shadow-neon transition-shadow duration-300">
+                        <div class="mb-5 pb-3 border-b border-gray-50 flex items-center justify-between">
+                            <h3 class="font-black text-indigo uppercase tracking-widest text-[10px]">${cat.title}</h3>
+                            <i class="fa-solid fa-dumbbell text-ice text-lg"></i>
+                        </div>
+                        <div class="space-y-6 flex-1">
+                `;
+                cat.items.forEach(item => {
+                    html += `
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-indigo text-xs w-2/3 leading-tight">${item.name}</span>
+                                <span class="bg-pink/10 text-pink text-[9px] font-black px-2 py-0.5 rounded-md border border-pink/20">PB: ${item.pb}kg</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full ${item.color} transition-all duration-1000 ease-out rounded-full" style="width: ${item.percent}%"></div>
+                                </div>
+                                <span class="text-[9px] font-mono text-indigo/40">${item.target}kg</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        renderWorkouts();
+        renderGoals();
+
+        // --- NAVIGATION ---
+        const desktopNav = document.querySelectorAll('.nav-item');
+        const mobileNav = document.querySelectorAll('.nav-item-mobile');
+        const views = document.querySelectorAll('.workout-view');
+        const titleEl = document.getElementById('activeTitle');
+        const titles = { day1: "Quads & Glutes", day2: "Hamstrings & Glutes", day3: "Push (CST)", day4: "Pull (BB)", targets: "Goals & PBs", analytics: "Analytics" };
+
+        function switchTab(target) {
+            desktopNav.forEach(b => {
+                b.classList.remove('active-nav', 'bg-white/10', 'text-white');
+                b.classList.add('text-white/70');
+                if(b.dataset.target === target) { b.classList.add('active-nav', 'bg-white/10', 'text-white'); b.classList.remove('text-white/70'); }
+            });
+            mobileNav.forEach(b => {
+                b.classList.remove('text-teal', 'text-rose-500', 'text-amber-500', 'text-sky-500', 'text-violet-500', 'text-pink'); 
+                b.classList.add('text-indigo/40');
+                if(b.dataset.target === target) { 
+                    b.classList.remove('text-indigo/40');
+                    if(target === 'day1') b.classList.add('text-rose-500');
+                    else if(target === 'day2') b.classList.add('text-amber-500');
+                    else if(target === 'day3') b.classList.add('text-sky-500');
+                    else if(target === 'day4') b.classList.add('text-violet-500');
+                    else if(target === 'targets') b.classList.add('text-pink');
+                    else b.classList.add('text-teal');
+                }
+            });
+            views.forEach(v => v.classList.add('hidden'));
+            document.getElementById(target).classList.remove('hidden');
+            titleEl.textContent = titles[target];
+            if(target === 'analytics') setTimeout(initCharts, 50);
+            calculateProgress();
+        }
+
+        desktopNav.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.target)));
+        mobileNav.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.target)));
+
+        function showToast(msg) {
+            const toast = document.getElementById('pb-toast');
+            document.getElementById('pb-toast-msg').textContent = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), 3000);
+        }
+
+        function saveLog(id, baseName, muscle, dayKey) {
+            const input = document.getElementById(`input-${id}`);
+            const val = input.value.trim();
+            if(!val) return;
+
+            const selector = document.getElementById(`select-${id}`);
+            const variantIndex = selector ? selector.value : 0;
+            const variantName = selector ? selector.options[selector.selectedIndex].text : baseName;
+            
+            const uniqueId = Date.now();
+
+            const entry = { id: uniqueId, date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), val: val };
+            const historyKey = `sb_hist_${id}_${variantIndex}`;
+            let history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            history.unshift(entry);
+            localStorage.setItem(historyKey, JSON.stringify(history));
+
+            const entryLog = { id: uniqueId, timestamp: uniqueId, day: new Date().getDay(), muscle: muscle, dayId: dayKey };
+            let activityLog = JSON.parse(localStorage.getItem('sb_activity_log') || '[]');
+            activityLog.push(entryLog);
+            localStorage.setItem('sb_activity_log', JSON.stringify(activityLog));
+
+            const loggedWeight = extractMaxWeight(val);
+            if(loggedWeight > 0) {
+                const pbKey = `sb_pb_${id}_${variantIndex}`;
+                const currentPB = parseFloat(localStorage.getItem(pbKey)) || 0;
+                if(loggedWeight > currentPB) {
+                    localStorage.setItem(pbKey, loggedWeight);
+                    showToast(`${variantName}: ${loggedWeight}kg`);
+                    renderGoals(); 
+                    updateLoadDisplay(id, variantIndex);
+                    input.parentElement.parentElement.classList.add('pb-glow');
+                    setTimeout(() => input.parentElement.parentElement.classList.remove('pb-glow'), 2000);
+                }
+            }
+
+            input.value = '';
+            const btn = input.parentElement.nextElementSibling;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 1000);
+        }
+
+        function deleteLog(id, variantIndex, historyIndex, logUniqueId) {
+            const historyKey = `sb_hist_${id}_${variantIndex}`;
+            let history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            history.splice(historyIndex, 1);
+            localStorage.setItem(historyKey, JSON.stringify(history));
+            
+            let activityLog = JSON.parse(localStorage.getItem('sb_activity_log') || '[]');
+            activityLog = activityLog.filter(log => log.id !== logUniqueId);
+            localStorage.setItem('sb_activity_log', JSON.stringify(activityLog));
+
+            let newMax = 0;
+            history.forEach(h => {
+                const w = extractMaxWeight(h.val);
+                if(w > newMax) newMax = w;
+            });
+            
+            const pbKey = `sb_pb_${id}_${variantIndex}`;
+            if(newMax === 0) localStorage.removeItem(pbKey);
+            else localStorage.setItem(pbKey, newMax);
+
+            const selector = document.getElementById(`select-${id}`);
+            const baseName = document.getElementById('modalTitle').textContent.replace(' History', '');
+            openHistory(id, baseName);
+            renderGoals(); 
+            updateLoadDisplay(id, variantIndex); 
+            initCharts();
+        }
+
+        function openHistory(id, baseName) {
+            const selector = document.getElementById(`select-${id}`);
+            const variantIndex = selector ? selector.value : 0;
+            const variantName = selector ? selector.options[selector.selectedIndex].text : baseName;
+
+            const modal = document.getElementById('historyModal');
+            document.getElementById('modalTitle').textContent = variantName + " History";
+            const content = document.getElementById('modalContent');
+            content.innerHTML = '';
+
+            const history = JSON.parse(localStorage.getItem(`sb_hist_${id}_${variantIndex}`) || '[]');
+
+            if(history.length === 0) content.innerHTML = '<div class="text-center text-indigo/30 text-sm py-8">No logs yet.</div>';
+            else {
+                history.forEach((h, idx) => {
+                    const logId = h.id || 0; 
+                    content.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm">
+                            <span class="text-indigo/50 font-mono text-xs">${h.date}</span>
+                            <div class="flex items-center gap-4">
+                                <span class="font-bold text-indigo">${h.val}</span>
+                                <button onclick="deleteLog('${id}', '${variantIndex}', ${idx}, ${logId})" class="text-indigo/20 hover:text-red-500 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeModal() {
+            document.getElementById('historyModal').classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+        }
+
+        function resetSession() {
+            const activeTab = document.querySelector('.active-nav').dataset.target;
+            if(activeTab === 'analytics' || activeTab === 'targets') { alert("Please go to a specific Workout Day to reset."); return; }
+            if(confirm("Clear checks for this workout?")) {
+                document.getElementById(activeTab).querySelectorAll('.completion-check').forEach(c => {
+                    c.checked = false; 
+                    localStorage.setItem('sb_check_' + c.dataset.id, 'false');
+                    updateCardVisuals(c); // Reset visual state
+                });
+                calculateProgress();
+            }
+        }
+
+        function exportData() {
+            const data = {};
+            for(let i=0; i<localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key.startsWith('sb_')) data[key] = localStorage.getItem(key);
+            }
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `strength_os_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+        }
+
+        function importData(input) {
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    Object.keys(data).forEach(key => { if(key.startsWith('sb_')) localStorage.setItem(key, data[key]); });
+                    alert('Data imported successfully!'); location.reload();
+                } catch (err) { alert('Error parsing file.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function wipeAllData() {
+            if(confirm("WARNING: This will permanently delete ALL logs, goals, and history.\n\nAre you sure you want to continue?")) {
+                if(confirm("This cannot be undone. Confirm wipe?")) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+        }
+
+        // --- NEW: Visual Card State Logic ---
+        function updateCardVisuals(checkbox) {
+            const card = checkbox.closest('.exercise-card');
+            if (!card) return;
+            if (checkbox.checked) {
+                card.classList.add('bg-slate-100', 'opacity-60');
+                card.classList.remove('bg-white');
+            } else {
+                card.classList.remove('bg-slate-100', 'opacity-60');
+                card.classList.add('bg-white');
+            }
+        }
+
+        const checks = document.querySelectorAll('.completion-check');
+        checks.forEach(check => {
+            const id = check.getAttribute('data-id');
+            const isChecked = localStorage.getItem('sb_check_' + id) === 'true';
+            check.checked = isChecked;
+            updateCardVisuals(check); // Apply initial visual state
+            
+            check.addEventListener('change', (e) => { 
+                localStorage.setItem('sb_check_' + id, e.target.checked); 
+                calculateProgress();
+                updateCardVisuals(e.target); // Apply visual state change
+            });
+        });
+
+        function calculateProgress() {
+            const visibleTab = Array.from(views).find(v => !v.classList.contains('hidden'));
+            if(visibleTab.id === 'analytics' || visibleTab.id === 'targets') return;
+            const tabChecks = visibleTab.querySelectorAll('.completion-check');
+            const total = tabChecks.length;
+            const checked = Array.from(tabChecks).filter(c => c.checked).length;
+            const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = percent + '%';
+        }
+
+        const homeToggles = document.querySelectorAll('.home-mode-toggle');
+        // Load initial state
+        if(localStorage.getItem('sb_home_mode') === 'true') {
+            document.body.classList.add('home-mode');
+            homeToggles.forEach(t => t.checked = true);
+            document.querySelectorAll('.home-badge').forEach(b => b.classList.remove('hidden'));
+        }
+
+        // Sync all toggles (desktop sidebar + mobile header)
+        homeToggles.forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                homeToggles.forEach(t => t.checked = isChecked);
+                document.body.classList.toggle('home-mode', isChecked);
+                document.querySelectorAll('.home-badge').forEach(b => b.classList.toggle('hidden', !isChecked));
+                localStorage.setItem('sb_home_mode', isChecked);
+            });
+        });
+
+        let timerInt; let timerSec = 0; let isRunning = false;
+        const disp = document.getElementById('timer-display'); const tog = document.getElementById('timer-toggle');
+        tog.addEventListener('click', () => {
+            if(isRunning) { clearInterval(timerInt); tog.innerHTML = '<i class="fa-solid fa-play text-xs ml-0.5"></i>'; } 
+            else { timerInt = setInterval(() => { timerSec++; const m = Math.floor(timerSec / 60).toString().padStart(2, '0'); const s = (timerSec % 60).toString().padStart(2, '0'); disp.textContent = `${m}:${s}`; }, 1000); tog.innerHTML = '<i class="fa-solid fa-pause text-xs"></i>'; }
+            isRunning = !isRunning;
+        });
+        document.getElementById('timer-reset').addEventListener('click', () => { clearInterval(timerInt); isRunning = false; timerSec = 0; disp.textContent = "00:00"; tog.innerHTML = '<i class="fa-solid fa-play text-xs ml-0.5"></i>'; });
+
+        function initCharts() {
+            if (window.chartDist) window.chartDist.destroy();
+            if (window.chartVol) window.chartVol.destroy();
+            const activityLog = JSON.parse(localStorage.getItem('sb_activity_log') || '[]');
+            const dayCounts = [0,0,0,0,0,0,0]; activityLog.forEach(log => dayCounts[log.day]++);
+            const monSunData = [...dayCounts.slice(1), dayCounts[0]];
+
+            window.chartDist = new Chart(document.getElementById('distributionChart'), {
+                type: 'bar',
+                data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Sets', data: monSunData, backgroundColor: '#087e8b', borderRadius: 6 }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } }
+            });
+
+            const recentLogs = activityLog.filter(l => l.timestamp > Date.now() - (7 * 24 * 60 * 60 * 1000));
+            const muscleCounts = {}; recentLogs.forEach(l => { muscleCounts[l.muscle] = (muscleCounts[l.muscle] || 0) + 1; });
+            window.chartVol = new Chart(document.getElementById('volumeChart'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(muscleCounts), datasets: [{ data: Object.values(muscleCounts), backgroundColor: ['#fb7185', '#fbbf24', '#38bdf8', '#a78bfa', '#ffb7c3'], borderWidth: 0 }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
+            });
+        }
+    </script>
+</body>
+</html>
