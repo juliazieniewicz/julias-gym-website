@@ -483,13 +483,53 @@ function renderGoals() {
             
             container.innerHTML += html + `</div></div>`;
         });
-    } else {
+} else {
         const muscles = [...new Set(dataFlat.map(x => x.muscle))];
+        
+        const muscleColorMap = {
+            'Quads': 'day1', 
+            'Hamstrings': 'day2', 
+            'Chest': 'day3', 'Shoulders': 'day3', 'Triceps': 'day3',
+            'Back': 'day4', 'Biceps': 'day4'
+        };
+
+        const getMuscleIcon = (m) => {
+            const icons = {
+                'Quads': 'fa-solid fa-person-walking', // Custom legs
+                'Glutes': 'fa-solid fa-apple-whole', // Represents the gluteal structure
+                'Hamstrings': 'fa-solid fa-burger', // Because it's HAMstrings
+                'Chest': 'fa-solid fa-shield-halved', // Idk it just makes sense 
+                'Shoulders': 'fa-solid fa-dumbbell', // Easy enough
+                'Triceps': 'fa-solid fa-person-falling', // Idk
+                'Back': 'fa-solid fa-people-pulling', // Pull is mainly back 
+                'Biceps': 'fa-solid fa-hand-fist' // Arms
+            };
+            return icons[m] || 'fa-dumbbell';
+        };
+
         muscles.forEach(m => {
+            let titleStyle = "";
+            let iconInnerStyle = "";
+            
+            if (m === 'Glutes') {
+                // OMBRE: Rose to Amber gradient for both text and icon
+                const gradient = `linear-gradient(to right, ${themes.day1.color}, ${themes.day2.color})`;
+                titleStyle = `background: ${gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;`;
+                iconInnerStyle = `background: ${gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;`;
+            } else {
+                const dayThemeKey = muscleColorMap[m] || 'day1';
+                const themeColor = themes[dayThemeKey].color;
+                titleStyle = `color: ${themeColor};`;
+                iconInnerStyle = `color: ${themeColor};`;
+            }
+            
             let html = `
                 <div class="glass-panel p-6 rounded-3xl">
-                    <h3 class="font-black uppercase text-xs mb-6 text-indigo flex items-center gap-2">
-                        <i class="fa-solid fa-layer-group"></i> ${m}
+                    <h3 class="font-black uppercase text-xs mb-6 flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shadow-sm bg-[#f8fafc]">
+                            <i class="fa-solid ${getMuscleIcon(m)}" style="${iconInnerStyle}"></i>
+                        </div>
+                        <span style="${titleStyle}">${m}</span>
                     </h3>
                     <div class="space-y-6">`;
             
