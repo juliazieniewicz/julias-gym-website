@@ -454,25 +454,65 @@ function updateDisplayLoad(exId, val) {
                 </div>`;
         }
 
-        function renderGoals() {
-            const container = document.getElementById('goals-container');
-            container.innerHTML = '';
-            const dataFlat = Object.keys(workoutData).flatMap(day => workoutData[day].map(ex => ({...ex, day})));
-            if (currentGoalView === 'day') {
-                ['day1','day2','day3','day4'].forEach(dayKey => {
-                    let html = `<div class="glass-panel p-6 rounded-3xl"><h3 class="font-black uppercase text-xs mb-6" style="color: ${themes[dayKey].color}">Day ${dayKey.slice(-1)}</h3><div class="space-y-6">`;
-                    dataFlat.filter(x => x.day === dayKey).forEach(ex => getVariants(ex).forEach(v => html += generateGoalItem(v)));
-                    container.innerHTML += html + `</div></div>`;
-                });
-            } else {
-                const muscles = [...new Set(dataFlat.map(x => x.muscle))];
-                muscles.forEach(m => {
-                    let html = `<div class="glass-panel p-6 rounded-3xl"><h3 class="font-black uppercase text-xs mb-6 text-indigo">${m}</h3><div class="space-y-6">`;
-                    dataFlat.filter(x => x.muscle === m).forEach(ex => getVariants(ex).forEach(v => html += generateGoalItem(v)));
-                    container.innerHTML += html + `</div></div>`;
-                });
+function renderGoals() {
+    const container = document.getElementById('goals-container');
+    container.innerHTML = '';
+    const allEx = currentGoalView === 'day' ? 
+        Object.values(workoutData).flat() : 
+        Object.values(workoutData).flat().sort((a,b) => a.muscle.localeCompare(b.muscle));
+
+    allEx.forEach(ex => {
+        const variants = getVariants(ex);
+        variants.forEach(v => {
+            const pb = getPB(ex.id, v.index);
+            const baseline = Math.abs(v.baseline);
+            const target = Math.abs(v.target);
+            const current = Math.abs(pb);
+            
+            let pct = 0;
+            if (pb !== 0) { // Only calculate if there is a PB logged
+                if (v.isAssisted) {
+                    // For Assisted: Progress is Baseline -> Target (decreasing assistance)
+                    const totalNeeded = baseline - target;
+                    const improvement = baseline - current;
+                    pct = (improvement / totalNeeded) * 100;
+                } else {
+                    // For Standard: Progress is Baseline -> Target (increasing weight)
+                    const totalNeeded = target - baseline;
+                    const improvement = current - baseline;
+                    pct = (improvement / totalNeeded) * 100;
+                }
             }
-        }
+            
+            // Constrain percentage between 0 and 100
+            pct = Math.max(0, Math.min(100, pct));
+
+            container.innerHTML += `
+                <div class="glass-panel p-4 rounded-2xl border-l-4 border-indigo">
+                    <div class="flex justify-between items-end mb-1">
+                        <div>
+                            <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">${v.muscle}</div>
+                            <div class="text-xs font-bold text-indigo">${v.name}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] font-black text-teal uppercase leading-none">${Math.round(pct)}%</div>
+                            <div class="text-[14px] font-black font-mono text-indigo">${formatW(pb)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-2">
+                        <div class="h-full bg-teal transition-all duration-1000" style="width: ${pct}%"></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">
+                        <span>Start: ${formatW(v.baseline)}</span>
+                        <span>Goal: ${formatW(v.target)}</span>
+                    </div>
+                </div>
+            `;
+        });
+    });
+}
 
         // --- NEW ANALYTICS LOGIC ---
         function populateChartSelector() {
