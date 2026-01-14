@@ -205,7 +205,7 @@ function getVariants(ex) {
         const raw = (loads[i] || loads[0]).trim();
         const baseline = parseFloat(raw.match(/(-?\d+(?:\.\d+)?)/)?.[0] || 0);
         
-        // Robust check: checks both the full name and the variant name
+        // Checks both variant name (n) AND main exercise name (ex.name) [cite: 74, 109]
         const isAssisted = n.toLowerCase().includes("assisted") || 
                           ex.name.toLowerCase().includes("assisted");
         
@@ -217,7 +217,7 @@ function getVariants(ex) {
             num: ex.num, 
             isAssisted, 
             baseline, 
-            target: isAssisted ? 0 : Math.ceil(baseline * 1.30) 
+            target: isAssisted ? 0 : Math.ceil(baseline * 1.30) [cite: 76]
         };
     });
 }
@@ -230,79 +230,75 @@ function saveLog(id) {
     const noteText = input.value.trim();
 
     if (noteText) {
-        const ex = Object.values(workoutData).flat().find(e => e.id === id);
-        const v = getVariants(ex)[idx];
+        const ex = Object.values(workoutData).flat().find(e => e.id === id); [cite: 46, 80]
+        const v = getVariants(ex)[idx]; [cite: 81]
 
-        // 1. Extract ALL numbers from the note
-        const weightMatches = noteText.match(/-?\d+(\.\d+)?/g);
+        const weightMatches = noteText.match(/-?\d+(\.\d+)?/g); [cite: 81]
         let extractedWeight = null;
 
         if (weightMatches) {
             const numbers = weightMatches.map(Number);
-            
             if (v.isAssisted) {
-                // For assisted: Pick the number CLOSEST to zero (least help)
-                // This correctly picks -18 over -25
+                // Pick the number CLOSEST to zero (least help)
+                // This correctly picks -18 over -25 [cite: 83, 84]
                 extractedWeight = numbers.reduce((prev, curr) => 
                     Math.abs(curr) < Math.abs(prev) ? curr : prev
                 );
             } else {
-                // For standard: Pick the HIGHEST number
-                extractedWeight = Math.max(...numbers);
+                extractedWeight = Math.max(...numbers); [cite: 84]
             }
         }
 
         const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-        const currentHist = getHistory(id, idx);
+        const currentHist = getHistory(id, idx); [cite: 85]
         
         currentHist.push({ date, note: noteText, detectedWeight: extractedWeight });
         localStorage.setItem(`sb_hist_${id}_${idx}`, JSON.stringify(currentHist));
 
         if (extractedWeight !== null) {
-            const currentPB = getPB(id, idx);
-            
+            const currentPB = getPB(id, idx); [cite: 78, 86]
             let isBetter = false;
+            
             if (v.isAssisted) {
-                // Better PB = lower absolute weight (e.g., 18kg help is better than 25kg help)
-                isBetter = (Math.abs(extractedWeight) < Math.abs(currentPB) || currentPB === 0);
+                // Better PB = lower absolute weight (less help)
+                isBetter = (Math.abs(extractedWeight) < Math.abs(currentPB) || currentPB === 0); [cite: 87, 88]
             } else {
-                // Better PB = higher weight
-                isBetter = (extractedWeight > currentPB);
+                isBetter = (extractedWeight > currentPB); [cite: 88]
             }
 
-            if (isBetter) localStorage.setItem(`sb_pb_${id}_${idx}`, extractedWeight);
+            if (isBetter) localStorage.setItem(`sb_pb_${id}_${idx}`, extractedWeight); [cite: 89]
         }
 
-        updateDisplayLoad(id, idx);
+        updateDisplayLoad(id, idx); [cite: 89, 94]
         input.value = ''; 
         input.placeholder = "Saved!";
-        setTimeout(() => input.placeholder = "Log weight...", 2000);
+        setTimeout(() => input.placeholder = "Log weight...", 2000); [cite: 90]
     }
 }
 
-        function deleteLog(id, entryIndex) {
-    const idx = document.getElementById(`select-${id}`)?.value || 0;
-    let hist = getHistory(id, idx);
+function deleteLog(id, entryIndex) {
+    const idx = document.getElementById(`select-${id}`)?.value || 0; [cite: 90]
+    let hist = getHistory(id, idx); [cite: 91]
     hist.splice(entryIndex, 1);
     localStorage.setItem(`sb_hist_${id}_${idx}`, JSON.stringify(hist));
     
-    const weights = hist.filter(h => h.detectedWeight !== null).map(h => h.detectedWeight);
-    const ex = Object.values(workoutData).flat().find(e => e.id === id);
+    const weights = hist.filter(h => h.detectedWeight !== null).map(h => h.detectedWeight); [cite: 91]
+    const ex = Object.values(workoutData).flat().find(e => e.id === id); [cite: 92]
     const v = getVariants(ex)[idx];
     
     let newPB = 0;
     if (weights.length > 0) {
         if (v.isAssisted) {
-            // Recalculate PB by finding the number closest to zero
+            // Recalculate PB by finding the absolute minimum (closest to zero) [cite: 93]
             newPB = weights.reduce((prev, curr) => Math.abs(curr) < Math.abs(prev) ? curr : prev);
         } else {
-            newPB = Math.max(...weights);
+            newPB = Math.max(...weights); [cite: 93]
         }
     }
     
     localStorage.setItem(`sb_pb_${id}_${idx}`, newPB);
-    updateDisplayLoad(id, idx);
-    renderHistoryLog(id);
+    updateDisplayLoad(id, idx); [cite: 93]
+    renderHistoryLog(id); [cite: 93]
 }
 
 function updateDisplayLoad(exId, val) {
@@ -538,38 +534,47 @@ function updateDisplayLoad(exId, val) {
             });
         }
 
-        function updateProgressionChart() {
-            const val = document.getElementById('chartExSelector').value;
-            const [id, idx] = val.split('_');
-            const hist = getHistory(id, parseInt(idx));
-            const ctx = document.getElementById('progressionChart').getContext('2d');
-            
-            if (progressionChartInstance) progressionChartInstance.destroy();
-            progressionChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: hist.map(h => h.date),
-                    datasets: [{
-                        label: 'Weight (kg)',
-                        data: hist.map(h => h.detectedWeight),
-                        borderColor: '#313b72',
-                        backgroundColor: 'rgba(49, 59, 114, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#313b72'
-                    }]
+function updateProgressionChart() {
+    const val = document.getElementById('chartExSelector').value; [cite: 155]
+    const [id, idx] = val.split('_'); [cite: 156]
+    const ex = Object.values(workoutData).flat().find(e => e.id === id); [cite: 46]
+    const v = getVariants(ex)[idx];
+    const hist = getHistory(id, parseInt(idx)); [cite: 156]
+    const ctx = document.getElementById('progressionChart').getContext('2d');
+    
+    if (progressionChartInstance) progressionChartInstance.destroy(); [cite: 156]
+    
+    // We chart the absolute value so labels are positive (e.g., 18kg instead of -18kg) [cite: 158]
+    const chartData = hist.map(h => Math.abs(h.detectedWeight));
+
+    progressionChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: hist.map(h => h.date), [cite: 157]
+            datasets: [{
+                label: v.isAssisted ? 'Assistance (kg)' : 'Weight (kg)', [cite: 158]
+                data: chartData,
+                borderColor: '#313b72',
+                fill: true, [cite: 159]
+                tension: 0.3,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            maintainAspectRatio: false, [cite: 160]
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { 
+                    beginAtZero: false, 
+                    grid: { display: false }, [cite: 161]
+                    // If assisted, reverse the axis so smaller numbers are at the TOP
+                    reverse: v.isAssisted 
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: false, grid: { display: false } },
-                        x: { grid: { display: false }, ticks: { font: { size: 9 } } }
-                    }
-                }
-            });
+                x: { grid: { display: false }, ticks: { font: { size: 9 } } } [cite: 161]
+            }
         }
+    });
+}
 
         function renderPBTable() {
             const container = document.getElementById('pb-table-container');
