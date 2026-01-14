@@ -548,10 +548,10 @@ function updateProgressionChart() {
     
     if (progressionChartInstance) progressionChartInstance.destroy();
     
-    // Get the absolute baseline (e.g., 60 for Leg Press)
+    // 1. Get the starting weight (baseline)
     const baselineValue = Math.abs(v.baseline);
     
-    // Map history to absolute values
+    // 2. Prepare the data (absolute values to handle -21kg correctly)
     const chartData = hist.map(h => Math.abs(h.detectedWeight));
 
     progressionChartInstance = new Chart(ctx, {
@@ -565,7 +565,8 @@ function updateProgressionChart() {
                 backgroundColor: 'rgba(8, 126, 139, 0.1)',
                 fill: true,
                 tension: 0.3,
-                pointRadius: 4
+                pointRadius: 4,
+                pointBackgroundColor: '#087e8b'
             }]
         },
         options: {
@@ -573,18 +574,22 @@ function updateProgressionChart() {
             plugins: { legend: { display: false } },
             scales: {
                 y: { 
-                    // This is the aggressive fix:
                     beginAtZero: false, 
-                    min: baselineValue, // Forces the bottom of the chart to be your start weight
-                    reverse: v.isAssisted, // Keeps progress moving UP for assisted
+                    // 3. FORCE the floor of the chart to be the baseline
+                    min: v.isAssisted ? undefined : baselineValue,
+                    // 4. If assisted, progress is moving TOWARD 0, so we reverse it
+                    reverse: v.isAssisted,
+                    // 5. Remove the extra padding Chart.js adds
+                    grace: 0,
+                    grid: { color: '#f1f5f9' },
                     ticks: {
-                        stepSize: 5, // Optional: makes the grid lines cleaner
-                        font: { size: 10 }
-                    },
-                    grid: { color: '#f1f5f9' }
+                        font: { size: 10 },
+                        callback: (value) => value + 'kg'
+                    }
                 },
                 x: { 
-                    grid: { display: false }
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } }
                 }
             }
         }
