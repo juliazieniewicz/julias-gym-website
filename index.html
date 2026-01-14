@@ -538,38 +538,66 @@ function updateDisplayLoad(exId, val) {
             });
         }
 
-        function updateProgressionChart() {
-            const val = document.getElementById('chartExSelector').value;
-            const [id, idx] = val.split('_');
-            const hist = getHistory(id, parseInt(idx));
-            const ctx = document.getElementById('progressionChart').getContext('2d');
-            
-            if (progressionChartInstance) progressionChartInstance.destroy();
-            progressionChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: hist.map(h => h.date),
-                    datasets: [{
-                        label: 'Weight (kg)',
-                        data: hist.map(h => h.detectedWeight),
-                        borderColor: '#313b72',
-                        backgroundColor: 'rgba(49, 59, 114, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#313b72'
-                    }]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: false, grid: { display: false } },
-                        x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+function updateProgressionChart() {
+    const val = document.getElementById('chartExSelector').value;
+    const [id, idx] = val.split('_');
+    const ex = Object.values(workoutData).flat().find(e => e.id === id);
+    const v = getVariants(ex)[idx];
+    const hist = getHistory(id, parseInt(idx));
+    const ctx = document.getElementById('progressionChart').getContext('2d');
+    
+    if (progressionChartInstance) progressionChartInstance.destroy();
+    
+    // Get the absolute baseline (e.g., 60 for Leg Press or 21 for Assisted Pullups)
+    const baselineValue = Math.abs(v.baseline);
+    
+    // Map history to absolute values (e.g., -18 becomes 18)
+    const chartData = hist.map(h => Math.abs(h.detectedWeight));
+
+    progressionChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: hist.map(h => h.date),
+            datasets: [{
+                label: v.isAssisted ? 'Assistance (kg)' : 'Weight (kg)',
+                data: chartData,
+                borderColor: '#087e8b',
+                backgroundColor: 'rgba(8, 126, 139, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#087e8b'
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.parsed.y} kg`
                     }
                 }
-            });
+            },
+            scales: {
+                y: { 
+                    // 1. Don't force 0
+                    beginAtZero: false, 
+                    // 2. Set the "Floor" of the chart to your starting baseline
+                    suggestedMin: baselineValue,
+                    // 3. For Assisted, reverse so progress (lower numbers) goes UP
+                    reverse: v.isAssisted,
+                    grid: { color: '#f1f5f9' },
+                    ticks: { font: { size: 10 } }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } }
+                }
+            }
         }
+    });
+}
 
         function renderPBTable() {
             const container = document.getElementById('pb-table-container');
