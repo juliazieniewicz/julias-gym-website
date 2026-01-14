@@ -197,16 +197,30 @@
         };
 
         function formatW(val) { const num = parseFloat(val); if (num === 0) return "BW"; return num + "kg"; }
-        function getVariants(ex) {
-            const names = ex.name.split(/\s*\/\s*/);
-            let loads = ex.gymLoad.split(/\s*\/\s*/);
-            return names.map((n, i) => {
-                const raw = (loads[i] || loads[0]).trim();
-                const baseline = parseFloat(raw.match(/(-?\d+(?:\.\d+)?)/)?.[0] || 0);
-                const isAssisted = n.toLowerCase().includes("assisted");
-                return { id: ex.id, index: i, name: n.trim(), muscle: ex.muscle, num: ex.num, isAssisted, baseline, target: isAssisted ? 0 : Math.ceil(baseline * 1.30) };
-            });
-        }
+function getVariants(ex) {
+    const names = ex.name.split(/\s*\/\s*/);
+    let loads = ex.gymLoad.split(/\s*\/\s*/);
+    
+    return names.map((n, i) => {
+        const raw = (loads[i] || loads[0]).trim();
+        const baseline = parseFloat(raw.match(/(-?\d+(?:\.\d+)?)/)?.[0] || 0);
+        
+        // Robust check: checks both the full name and the variant name
+        const isAssisted = n.toLowerCase().includes("assisted") || 
+                          ex.name.toLowerCase().includes("assisted");
+        
+        return { 
+            id: ex.id, 
+            index: i, 
+            name: n.trim(), 
+            muscle: ex.muscle, 
+            num: ex.num, 
+            isAssisted, 
+            baseline, 
+            target: isAssisted ? 0 : Math.ceil(baseline * 1.30) 
+        };
+    });
+}
         function getHistory(id, idx) { const h = localStorage.getItem(`sb_hist_${id}_${idx}`); return h ? JSON.parse(h) : []; }
         function getPB(id, idx) { return parseFloat(localStorage.getItem(`sb_pb_${id}_${idx}`)) || 0; }
 
@@ -216,18 +230,26 @@ function saveLog(id) {
     const noteText = input.value.trim();
 
     if (noteText) {
-        // 1. Find the exercise and variant first to check the type
         const ex = Object.values(workoutData).flat().find(e => e.id === id);
         const v = getVariants(ex)[idx];
 
-        // 2. Extract all numbers from the note
+        // 1. Extract ALL numbers from the note
         const weightMatches = noteText.match(/-?\d+(\.\d+)?/g);
         let extractedWeight = null;
 
         if (weightMatches) {
             const numbers = weightMatches.map(Number);
-            // 3. Logic Shift: Min for Assisted, Max for Standard
-            extractedWeight = v.isAssisted ? Math.min(...numbers) : Math.max(...numbers);
+            
+            if (v.isAssisted) {
+                // For assisted: Pick the number CLOSEST to zero (least help)
+                // This correctly picks -18 over -25
+                extractedWeight = numbers.reduce((prev, curr) => 
+                    Math.abs(curr) < Math.abs(prev) ? curr : prev
+                );
+            } else {
+                // For standard: Pick the HIGHEST number
+                extractedWeight = Math.max(...numbers);
+            }
         }
 
         const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -239,10 +261,14 @@ function saveLog(id) {
         if (extractedWeight !== null) {
             const currentPB = getPB(id, idx);
             
-            // 4. PB Logic: Lower is better for assisted, higher is better for standard
-            const isBetter = v.isAssisted 
-                ? (extractedWeight < currentPB || currentPB === 0) 
-                : (extractedWeight > currentPB);
+            let isBetter = false;
+            if (v.isAssisted) {
+                // Better PB = lower absolute weight (e.g., 18kg help is better than 25kg help)
+                isBetter = (Math.abs(extractedWeight) < Math.abs(currentPB) || currentPB === 0);
+            } else {
+                // Better PB = higher weight
+                isBetter = (extractedWeight > currentPB);
+            }
 
             if (isBetter) localStorage.setItem(`sb_pb_${id}_${idx}`, extractedWeight);
         }
@@ -255,19 +281,29 @@ function saveLog(id) {
 }
 
         function deleteLog(id, entryIndex) {
-            const idx = document.getElementById(`select-${id}`)?.value || 0;
-            let hist = getHistory(id, idx);
-            hist.splice(entryIndex, 1);
-            localStorage.setItem(`sb_hist_${id}_${idx}`, JSON.stringify(hist));
-            const weights = hist.filter(h => h.detectedWeight !== null).map(h => h.detectedWeight);
-            const ex = Object.values(workoutData).flat().find(e => e.id === id);
-            const v = getVariants(ex)[idx];
-            let newPB = 0;
-            if (weights.length > 0) newPB = v.isAssisted ? Math.min(...weights) : Math.max(...weights);
-            localStorage.setItem(`sb_pb_${id}_${idx}`, newPB);
-            updateDisplayLoad(id, idx);
-            renderHistoryLog(id);
+    const idx = document.getElementById(`select-${id}`)?.value || 0;
+    let hist = getHistory(id, idx);
+    hist.splice(entryIndex, 1);
+    localStorage.setItem(`sb_hist_${id}_${idx}`, JSON.stringify(hist));
+    
+    const weights = hist.filter(h => h.detectedWeight !== null).map(h => h.detectedWeight);
+    const ex = Object.values(workoutData).flat().find(e => e.id === id);
+    const v = getVariants(ex)[idx];
+    
+    let newPB = 0;
+    if (weights.length > 0) {
+        if (v.isAssisted) {
+            // Recalculate PB by finding the number closest to zero
+            newPB = weights.reduce((prev, curr) => Math.abs(curr) < Math.abs(prev) ? curr : prev);
+        } else {
+            newPB = Math.max(...weights);
         }
+    }
+    
+    localStorage.setItem(`sb_pb_${id}_${idx}`, newPB);
+    updateDisplayLoad(id, idx);
+    renderHistoryLog(id);
+}
 
 function updateDisplayLoad(exId, val) {
     const ex = Object.values(workoutData).flat().find(e => e.id === exId);
